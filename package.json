@@ -1,0 +1,30 @@
+{
+  "name": "betonback",
+  "version": "1.0.0",
+  "description": "\"# betonback\" \r \"# betonback\" \r \"# betonback\" \r \"# betonback\" \r \"# betonback\"",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node index.js",
+    "dev": "nodemon index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dododgit1507/betonback.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/dododgit1507/betonback/issues"
+  },
+  "homepage": "https://github.com/dododgit1507/betonback#readme",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.21.2",
+    "morgan": "^1.10.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.9"
+  }
+}
