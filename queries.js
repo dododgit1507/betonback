@@ -14,8 +14,23 @@ const getProyectos = async () => {
 };
 
 const getUsuarios = async () => {
-  return await db.query('SELECT * FROM usuario');
+  return await db.query(`
+    SELECT 
+      usuario.id_usuario AS ID, 
+      persona.nombre AS Nombre, 
+      persona.telefono AS Telefono, 
+      usuario.correo AS Correo, 
+      usuario.rol AS Rol
+    FROM usuario
+    INNER JOIN persona ON usuario.id_persona = persona.id_persona
+  `);
 };
+
+const getEnvio = async () => {
+  return await db.query('SELECT * FROM envio');
+};
+
+
 
 const getTransportes = async () => {
   return await db.query('SELECT * FROM transporte');
@@ -64,34 +79,37 @@ const registrarProyecto = async (id_proyecto_cup, nombre, suf) => {
   );
 };
 
+// Función para registrar un pedido en la base de datos
 const registrarPedido = async (data) => {
   const {
-    codigo_pedido, fecha, hora, nivel, metros_cuadrados, metros_lineales, kilogramos,
-    frisos, chatas, codigo_plano, planta, id_proyecto_cup, id_producto, id_usuario,
-    id_transporte, id_oficina
+    codigo_pedido, fecha, hora, nivel, metros_cuadrados,
+    metros_lineales, kilogramos, frisos, chatas, codigo_plano,
+    planta, id_proyecto_cup, id_producto, id_usuario, id_transporte, id_oficina
   } = data;
 
-  try {
-    const result = await db.query(
-      `INSERT INTO detalle_pedido 
-      (Codigo_Pedido, Fecha, Hora, Nivel, Metros_Cuadrados, Metros_Lineales, Kilogramos,
-      Frisos, Chatas, Codigo_Plano, Planta, Id_Proyecto_CUP, Id_Producto, Id_Usuario,
-      Id_Transporte, Id_Oficina) 
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
-      RETURNING *`,
-      [
-        codigo_pedido, fecha, hora, nivel, metros_cuadrados, metros_lineales, kilogramos,
-        frisos, chatas, codigo_plano, planta, id_proyecto_cup, id_producto, id_usuario,
-        id_transporte, id_oficina
-      ]
-    );
-
-    return result.rows[0];
-  } catch (error) {
-    console.error('Error al registrar el pedido:', error);
-    throw error;
+  // Asegúrate de que todas las propiedades están presentes en `data`
+  if (!codigo_pedido || !fecha || !hora || !nivel || !metros_cuadrados ||
+      !metros_lineales || !kilogramos || !frisos || !chatas || !codigo_plano ||
+      !planta || !id_proyecto_cup || !id_producto || !id_usuario || !id_transporte || !id_oficina) {
+    throw new Error('Faltan datos obligatorios');
   }
+
+  return await db.query(
+    `INSERT INTO detalle_pedido (
+      codigo_pedido, fecha, hora, nivel, metros_cuadrados, metros_lineales, 
+      kilogramos, frisos, chatas, codigo_plano, planta, id_proyecto_cup, 
+      id_producto, id_usuario, id_transporte, id_oficina
+    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+    RETURNING *`, 
+    [
+      codigo_pedido, fecha, hora, nivel, metros_cuadrados, metros_lineales, 
+      kilogramos, frisos, chatas, codigo_plano, planta, id_proyecto_cup, 
+      id_producto, id_usuario, id_transporte, id_oficina
+    ]
+  );
 };
+
+
 
 const registrarEnvio = async (data) => {
   const { fecha_envio, observacion, valorizado, facturado, pagado, codigo_pedido } = data;
@@ -100,6 +118,17 @@ const registrarEnvio = async (data) => {
     [fecha_envio, observacion, valorizado, facturado, pagado, codigo_pedido]
   );
 };
+
+const registrarOficina = async (especialidad) => {
+  return await db.query(
+    'INSERT INTO oficina_tecnica (especialidad) VALUES ($1) RETURNING *',
+    [especialidad]
+  );
+};
+
+
+
+
 
 // Función para actualizar datos
 
@@ -129,6 +158,7 @@ module.exports = {
   getPedidos,
   getProyectos,
   getUsuarios,
+  getEnvio,
   getTransportes,
   getOficinasTecnicas,
   getProductos,
@@ -136,5 +166,6 @@ module.exports = {
   registrarProyecto,
   registrarPedido,
   registrarEnvio,
+  registrarOficina,
   actualizarPedido
 };

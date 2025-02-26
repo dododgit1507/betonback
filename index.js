@@ -22,6 +22,9 @@ app.get('/pedidos', async (req, res) => {
   }
 });
 
+
+
+
 app.get('/proyecto', async (req, res) => {
   try {
     const result = await queries.getProyectos();
@@ -41,6 +44,17 @@ app.get('/usuario', async (req, res) => {
     res.status(500).send('Error al obtener los usuarios');
   }
 });
+
+app.get('/envio', async (req, res) => {
+  try {
+    const result = await queries.getEnvio();
+    res.json(result.rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('Error al obtener los usuarios');
+  }
+});
+
 
 app.get('/transporte', async (req, res) => {
   try {
@@ -96,6 +110,18 @@ app.post('/registrar_cliente', async (req, res) => {
         console.error(error);
         res.status(500).json({ message: 'Error al registrar el cliente' });
     }
+});
+
+
+app.post('/registrar_oficina', async (req, res) => {
+  const { especialidad } = req.body;
+  try {
+    const result = await queries.registrarOficina( especialidad ); // Pasar un objeto
+    res.json(result);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('Error al registrar la oficina');
+  }
 });
 
 
