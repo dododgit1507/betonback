@@ -4,8 +4,32 @@ const pool = require('./db');
 // Funciones para obtener datos
 
 const getPedidos = async () => {
-    return await pool.query('SELECT * FROM detalle_pedido');
-     
+  return await pool.query(`
+    SELECT 
+      dp.codigo_pedido, 
+      dp.fecha, 
+      dp.hora, 
+      dp.nivel, 
+      dp.metros_cuadrados, 
+      dp.metros_lineales, 
+      dp.kilogramos, 
+      dp.frisos, 
+      dp.chatas, 
+      dp.codigo_plano, 
+      dp.planta,
+      p.nombre AS nombre_proyecto_cup, 
+      pr.tipo AS nombre_producto, 
+      per.nombre AS nombre_usuario,  -- Obtenemos el nombre de la tabla persona
+      t.nombre AS nombre_transporte, 
+      ot.especialidad AS nombre_oficina
+    FROM detalle_pedido dp
+    JOIN proyecto p ON dp.id_proyecto_cup = p.id_proyecto_cup
+    JOIN producto pr ON dp.id_producto = pr.id_producto
+    JOIN usuario u ON dp.id_usuario = u.id_usuario  -- Usamos id_usuario
+    JOIN persona per ON u.id_persona = per.id_persona  -- Obtenemos el nombre desde la tabla persona
+    JOIN transporte t ON dp.id_transporte = t.id_transporte
+    JOIN oficina_tecnica ot ON dp.id_oficina = ot.id_oficina
+  `);
 };
 
 
@@ -70,6 +94,26 @@ const registrarCliente = async (req, res) => {
         res.status(500).json({ message: 'Error al registrar el cliente' });
     }
 };
+
+// En tu archivo principal de rutas (app.js o server.js)
+
+
+const getUserByEmail = async (email) => {
+  try {
+    const query = 'SELECT * FROM usuario WHERE correo = $1';
+    const result = await pool.query(query, [email]);
+    
+    if (result.rows.length === 0) {
+      throw new Error('Usuario no encontrado');
+    }
+    
+    return result.rows[0]; // Retorna el usuario encontrado
+  } catch (err) {
+    console.error('Error al obtener el usuario por email', err);
+    throw err; // Lanza el error para que sea capturado en el controlador
+  }
+};
+
 
 
 const registrarProyecto = async (id_proyecto_cup, nombre, suf) => {
@@ -164,8 +208,10 @@ module.exports = {
   getProductos,
   registrarCliente,
   registrarProyecto,
+  getUserByEmail,
   registrarPedido,
   registrarEnvio,
   registrarOficina,
   actualizarPedido
 };
+

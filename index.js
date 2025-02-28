@@ -3,6 +3,8 @@ const morgan = require('morgan');
 const cors = require('cors');
 const queries = require('./queries');  // Importamos las funciones del archivo queries.js
 const pool = require('./db');  // Importamos la configuración de la base de datos
+const bcrypt = require('bcrypt');
+const saltRounds = 10;
 
 const app = express();
 
@@ -10,7 +12,6 @@ const app = express();
 app.use(morgan('dev'));
 app.use(cors());
 app.use(express.json());
-
 // GET Endpoints
 app.get('/pedidos', async (req, res) => {
   try {
@@ -88,28 +89,57 @@ app.get('/producto', async (req, res) => {
 
 // POST Endpoints
 app.post('/registrar_cliente', async (req, res) => {
-    const { nombre, correo, telefono, pais, rol, contraseña } = req.body;
+  const { nombre, correo, telefono, pais, rol, contraseña } = req.body;
 
-    try {
-        const personaResult = await pool.query(
-            `INSERT INTO Persona (Nombre, Correo, Telefono, Pais) 
-             VALUES ($1, $2, $3, $4) RETURNING Id_Persona`,
-            [nombre, correo, telefono, pais]
-        );
+  try {
+      // Encriptar la contraseña
+      const hashedPassword = await bcrypt.hash(contraseña, saltRounds);
 
-        const idPersona = personaResult.rows[0].id_persona;
+      const personaResult = await pool.query(
+          `INSERT INTO Persona (Nombre, Correo, Telefono, Pais) 
+           VALUES ($1, $2, $3, $4) RETURNING Id_Persona`,
+          [nombre, correo, telefono, pais]
+      );
 
-        await pool.query(
-            `INSERT INTO Usuario (Correo, Contraseña, Rol, Id_Persona) 
-             VALUES ($1, $2, $3, $4)`,
-            [correo, contraseña, rol, idPersona]
-        );
+      const idPersona = personaResult.rows[0].id_persona;
 
-        res.status(201).json({ message: 'Cliente registrado exitosamente' });
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'Error al registrar el cliente' });
+      await pool.query(
+          `INSERT INTO Usuario (Correo, Contraseña, Rol, Id_Persona) 
+           VALUES ($1, $2, $3, $4)`,
+          [correo, hashedPassword, rol, idPersona]
+      );
+
+      res.status(201).json({ message: 'Cliente registrado exitosamente' });
+  } catch (error) {
+      console.error(error);
+      res.status(500).json({ message: 'Error al registrar el cliente' });
+  }
+});
+
+app.post('/login', async (req, res) => {
+  const { email, password } = req.body;
+
+  try {
+    const userResult = await pool.query('SELECT * FROM Usuario WHERE Correo = $1', [email]);
+    
+    if (userResult.rows.length === 0) {
+      return res.status(400).json({ message: 'Usuario no encontrado' });
     }
+
+    const user = userResult.rows[0];
+    
+    // Comparar la contraseña encriptada
+    const isMatch = await bcrypt.compare(password, user.contraseña);
+
+    if (!isMatch) {
+      return res.status(400).json({ message: 'Contraseña incorrecta' });
+    }
+
+    res.status(200).json({ message: 'Inicio de sesión exitoso' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Error en el servidor' });
+  }
 });
 
 
@@ -123,6 +153,7 @@ app.post('/registrar_oficina', async (req, res) => {
     res.status(500).send('Error al registrar la oficina');
   }
 });
+
 
 
 
