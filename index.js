@@ -24,8 +24,6 @@ app.get('/pedidos', async (req, res) => {
 });
 
 
-
-
 app.get('/proyecto', async (req, res) => {
   try {
     const result = await queries.getProyectos();

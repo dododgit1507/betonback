@@ -54,14 +54,19 @@ const getEnvio = async () => {
   return await db.query('SELECT * FROM envio');
 };
 
-
-
 const getTransportes = async () => {
   return await db.query('SELECT * FROM transporte');
 };
 
 const getOficinasTecnicas = async () => {
-  return await db.query('SELECT * FROM oficina_tecnica');
+  return await db.query(`
+    SELECT 
+      persona.id_persona as ID, 
+      persona.nombre as Nombre, 
+      oficina_tecnica.especialidad as Especialidad
+    FROM persona
+    INNER JOIN oficina_tecnica ON persona.id_persona = oficina_tecnica.id_persona
+    `);
 };
 
 const getProductos = async () => {
