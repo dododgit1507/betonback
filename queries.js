@@ -44,7 +44,8 @@ const getUsuarios = async () => {
       persona.nombre AS Nombre, 
       persona.telefono AS Telefono, 
       usuario.correo AS Correo, 
-      usuario.rol AS Rol
+      usuario.rol AS Rol,
+      persona.pais AS Pais
     FROM usuario
     INNER JOIN persona ON usuario.id_persona = persona.id_persona
   `);
