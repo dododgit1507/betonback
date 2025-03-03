@@ -5,31 +5,35 @@ const pool = require('./db');
 
 const getPedidos = async () => {
   return await pool.query(`
-    SELECT 
-      dp.codigo_pedido, 
-      dp.fecha, 
-      dp.hora, 
-      dp.nivel, 
-      dp.metros_cuadrados, 
-      dp.metros_lineales, 
-      dp.kilogramos, 
-      dp.frisos, 
-      dp.chatas, 
-      dp.codigo_plano, 
-      dp.planta,
-      p.nombre AS nombre_proyecto_cup, 
-      pr.tipo AS nombre_producto, 
-      per.nombre AS nombre_usuario,  -- Obtenemos el nombre de la tabla persona
-      t.nombre AS nombre_transporte, 
-      ot.especialidad AS nombre_oficina
+     SELECT
+        pr.nombre AS nombre_proyecto_cup,
+        dp.codigo_pedido,
+        prod.tipo AS nombre_producto,
+        ofi.especialidad AS oficina_especialidad,
+        per_ofi.nombre AS nombre_oficina,  -- Persona vinculada con la oficina técnica
+        dp.metros_cuadrados AS m2,
+        dp.metros_lineales AS ml,
+        dp.kilogramos AS kg,
+        dp.frisos AS frisos_ml,
+        dp.chatas AS chatas_kg,
+        dp.fecha,
+        dp.hora,
+        dp.nivel,
+        dp.codigo_plano,
+        dp.planta,
+        per.nombre AS nombre_usuario,  -- Usuario que hizo el pedido
+        pr.id_proyecto_cup,
+        pr.suf,
+        t.nombre AS nombre_transporte
     FROM detalle_pedido dp
-    JOIN proyecto p ON dp.id_proyecto_cup = p.id_proyecto_cup
-    JOIN producto pr ON dp.id_producto = pr.id_producto
-    JOIN usuario u ON dp.id_usuario = u.id_usuario  -- Usamos id_usuario
-    JOIN persona per ON u.id_persona = per.id_persona  -- Obtenemos el nombre desde la tabla persona
+    JOIN proyecto pr ON dp.id_proyecto_cup = pr.id_proyecto_cup
+    JOIN producto prod ON dp.id_producto = prod.id_producto
+    JOIN usuario u ON dp.id_usuario = u.id_usuario  
+    JOIN persona per ON u.id_persona = per.id_persona  
     JOIN transporte t ON dp.id_transporte = t.id_transporte
-    JOIN oficina_tecnica ot ON dp.id_oficina = ot.id_oficina
-  `);
+    JOIN oficina_tecnica ofi ON dp.id_oficina = ofi.id_oficina
+    JOIN persona per_ofi ON ofi.id_persona = per_ofi.id_persona;  -- Corrección aquí
+    `);
 };
 
 
