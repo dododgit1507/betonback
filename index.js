@@ -4,6 +4,8 @@ const cors = require('cors');
 const queries = require('./queries');  // Importamos las funciones del archivo queries.js
 const pool = require('./db');  // Importamos la configuración de la base de datos
 const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
+
 const saltRounds = 10;
 
 const app = express();
@@ -13,15 +15,34 @@ app.use(morgan('dev'));
 app.use(cors());
 app.use(express.json());
 // GET Endpoints
-app.get('/pedidos', async (req, res) => {
+
+const authenticateJWT = (req, res, next) => {
+  const token = req.headers.authorization?.split(' ')[1]; // Esperamos el token en el header Authorization: Bearer <token>
+
+  if (!token) {
+    return res.status(403).json({ message: 'Token no proporcionado' });
+  }
+
   try {
-    const result = await queries.getPedidos();
-    res.json(result.rows);
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    req.user = decoded; // Almacenar la información del usuario en req.user
+    next(); // Pasar al siguiente middleware o ruta
+  } catch (err) {
+    return res.status(401).json({ message: 'Token inválido o expirado' });
+  }
+};
+
+// Ejemplo de una ruta protegida
+app.get('/pedidos', authenticateJWT, async (req, res) => {
+  try {
+    const result = await queries.getPedidos(req.user.id_usuario);
+    res.json(result);
   } catch (err) {
     console.error(err);
-    res.status(500).send('Error al obtener los pedidos');
+    res.status(500).json({ message: 'Error al obtener los pedidos' });
   }
 });
+
 
 
 app.get('/proyecto', async (req, res) => {
@@ -90,24 +111,39 @@ app.post('/registrar_cliente', async (req, res) => {
   const { nombre, correo, telefono, pais, rol, contraseña } = req.body;
 
   try {
+      // Validar que los campos requeridos no estén vacíos
+      if (!nombre || !correo || !telefono || !pais || !rol || !contraseña) {
+          return res.status(400).json({ message: 'Todos los campos son obligatorios' });
+      }
+
+      // Verificar si el correo ya está registrado
+      const correoExistente = await pool.query('SELECT * FROM usuario WHERE correo = $1', [correo]);
+
+      if (correoExistente.rows.length > 0) {
+          return res.status(400).json({ message: 'El correo ya está registrado' });
+      }
+
       // Encriptar la contraseña
       const hashedPassword = await bcrypt.hash(contraseña, saltRounds);
 
+      // Insertar en la tabla Persona
       const personaResult = await pool.query(
-          `INSERT INTO Persona (Nombre, Correo, Telefono, Pais) 
-           VALUES ($1, $2, $3, $4) RETURNING Id_Persona`,
+          `INSERT INTO persona (nombre, correo, telefono, pais) 
+           VALUES ($1, $2, $3, $4) RETURNING id_persona`,
           [nombre, correo, telefono, pais]
       );
 
       const idPersona = personaResult.rows[0].id_persona;
 
+      // Insertar en la tabla Usuario
       await pool.query(
-          `INSERT INTO Usuario (Correo, Contraseña, Rol, Id_Persona) 
+          `INSERT INTO usuario (correo, contraseña, rol, id_persona) 
            VALUES ($1, $2, $3, $4)`,
           [correo, hashedPassword, rol, idPersona]
       );
 
-      res.status(201).json({ message: 'Cliente registrado exitosamente' });
+      // Enviar respuesta con éxito
+      res.status(201).json({ message: 'Cliente registrado exitosamente', idPersona });
   } catch (error) {
       console.error(error);
       res.status(500).json({ message: 'Error al registrar el cliente' });
@@ -115,42 +151,81 @@ app.post('/registrar_cliente', async (req, res) => {
 });
 
 app.post('/login', async (req, res) => {
-  const { email, password } = req.body;
+  const { correo, contraseña } = req.body;
+  console.log('Correo:', { correo });
+  console.log('Contraseña:', contraseña);
 
   try {
-    const userResult = await pool.query('SELECT * FROM Usuario WHERE Correo = $1', [email]);
-    
-    if (userResult.rows.length === 0) {
-      return res.status(400).json({ message: 'Usuario no encontrado' });
+    const query = 'SELECT * FROM usuario WHERE correo = $1';
+    const result = await pool.query(query, [correo]);
+
+    if (result.rows.length === 0) {
+      console.log('Usuario no encontrado');
+      return res.status(400).json({ message: 'Usuario o contraseña incorrectos' });
     }
 
-    const user = userResult.rows[0];
-    
-    // Comparar la contraseña encriptada
-    const isMatch = await bcrypt.compare(password, user.contraseña);
+    const user = result.rows[0];
+    console.log('Usuario encontrado:', user);
 
-    if (!isMatch) {
-      return res.status(400).json({ message: 'Contraseña incorrecta' });
+    const isPasswordValid = await bcrypt.compare(contraseña, user.contraseña);
+    console.log('¿Contraseña válida?', isPasswordValid);
+
+    if (!isPasswordValid) {
+      return res.status(400).json({ message: 'Usuario o contraseña incorrectos' });
     }
 
-    res.status(200).json({ message: 'Inicio de sesión exitoso' });
-  } catch (error) {
-    console.error(error);
+    // Obtener el nombre de la persona a partir del id_persona
+    const personaQuery = 'SELECT nombre FROM persona WHERE id_persona = $1';
+    const personaResult = await pool.query(personaQuery, [user.id_persona]);
+
+    if (personaResult.rows.length === 0) {
+      console.log('Persona no encontrada');
+      return res.status(400).json({ message: 'Usuario o contraseña incorrectos' });
+    }
+
+    const persona = personaResult.rows[0].nombre;
+
+    const token = jwt.sign(
+      { id_usuario: user.id_usuario, correo: user.correo, rol: user.rol },
+      process.env.JWT_SECRET,
+      { expiresIn: process.env.JWT_EXPIRES_IN || '1h' }
+    );
+
+    console.log('Token:', token);
+    console.log('Id usuario:', user.id_usuario);
+    console.log('Rol:', user.rol);
+    console.log('Nombre:', persona);
+
+    // Devolver el token, id_usuario, rol y nombre de usuario
+    res.json({ 
+      token, 
+      id_usuario: user.id_usuario, 
+      rol: user.rol, // Mandar el rol de la persona
+      nombre: persona // Mandar el nombre de la persona
+    });
+  } catch (err) {
+    console.error('Error en el servidor:', err);
     res.status(500).json({ message: 'Error en el servidor' });
   }
 });
 
-
+// Ruta para registrar una nueva oficina técnica
 app.post('/registrar_oficina', async (req, res) => {
-  const { especialidad } = req.body;
+  const { especialidad, id_persona } = req.body; // Ahora recibimos también el id_persona
+
+  if (!especialidad || !id_persona) {
+    return res.status(400).send('Faltan datos requeridos');
+  }
+
   try {
-    const result = await queries.registrarOficina( especialidad ); // Pasar un objeto
+    const result = await queries.registrarOficina({ especialidad, id_persona }); // Pasar un objeto con ambos campos
     res.json(result);
   } catch (err) {
     console.error(err);
     res.status(500).send('Error al registrar la oficina');
   }
 });
+
 
 
 

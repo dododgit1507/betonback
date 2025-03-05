@@ -2,15 +2,15 @@ const db = require('./db');
 const pool = require('./db');
 
 // Funciones para obtener datos
-
-const getPedidos = async () => {
-  return await pool.query(`
-     SELECT
+const getPedidos = async (userId) => {
+  try {
+    const result = await pool.query(`
+      SELECT
         pr.nombre AS nombre_proyecto_cup,
         dp.codigo_pedido,
         prod.tipo AS nombre_producto,
         ofi.especialidad AS oficina_especialidad,
-        per_ofi.nombre AS nombre_oficina,  -- Persona vinculada con la oficina técnica
+        per_ofi.nombre AS nombre_oficina,
         dp.metros_cuadrados AS m2,
         dp.metros_lineales AS ml,
         dp.kilogramos AS kg,
@@ -21,20 +21,38 @@ const getPedidos = async () => {
         dp.nivel,
         dp.codigo_plano,
         dp.planta,
-        per.nombre AS nombre_usuario,  -- Usuario que hizo el pedido
+        per.nombre AS nombre_usuario,
         pr.id_proyecto_cup,
         pr.suf,
         t.nombre AS nombre_transporte
-    FROM detalle_pedido dp
-    JOIN proyecto pr ON dp.id_proyecto_cup = pr.id_proyecto_cup
-    JOIN producto prod ON dp.id_producto = prod.id_producto
-    JOIN usuario u ON dp.id_usuario = u.id_usuario  
-    JOIN persona per ON u.id_persona = per.id_persona  
-    JOIN transporte t ON dp.id_transporte = t.id_transporte
-    JOIN oficina_tecnica ofi ON dp.id_oficina = ofi.id_oficina
-    JOIN persona per_ofi ON ofi.id_persona = per_ofi.id_persona;  -- Corrección aquí
-    `);
+      FROM detalle_pedido dp
+      JOIN proyecto pr ON dp.id_proyecto_cup = pr.id_proyecto_cup
+      JOIN producto prod ON dp.id_producto = prod.id_producto
+      JOIN usuario u ON dp.id_usuario = u.id_usuario  
+      JOIN persona per ON u.id_persona = per.id_persona  
+      JOIN transporte t ON dp.id_transporte = t.id_transporte
+      JOIN oficina_tecnica ofi ON dp.id_oficina = ofi.id_oficina
+      JOIN persona per_ofi ON ofi.id_persona = per_ofi.id_persona`);
+
+    // Verifica si result y result.rows están correctamente definidos
+    if (!result || !result.rows) {
+      console.error('Error: result o result.rows no están definidos');
+      return [];
+    }
+
+    // Si hay filas en result.rows, devolverlas
+    if (result.rows.length > 0) {
+      return result.rows;
+    } else {
+      console.log('No se encontraron pedidos para el usuario con ID:', userId);
+      return []; // Devuelve un array vacío si no hay resultados
+    }
+  } catch (err) {
+    console.error('Error al obtener los pedidos:', err);
+    throw new Error('Error al obtener los pedidos'); // Propaga el error al controlador
+  }
 };
+
 
 
 const getProyectos = async () => {
@@ -173,12 +191,13 @@ const registrarEnvio = async (data) => {
   );
 };
 
-const registrarOficina = async (especialidad) => {
+const registrarOficina = async ({ especialidad, id_persona }) => {
   return await db.query(
-    'INSERT INTO oficina_tecnica (especialidad) VALUES ($1) RETURNING *',
-    [especialidad]
+    'INSERT INTO oficina_tecnica (especialidad, id_persona) VALUES ($1, $2) RETURNING *',
+    [especialidad, id_persona] // Pasamos ambos valores a la consulta
   );
 };
+
 
 
 
