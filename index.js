@@ -267,15 +267,30 @@ app.post('/registrar_envio', async (req, res) => {
 app.put('/actualizar_pedido/:codigo_pedido', async (req, res) => {
   const { codigo_pedido } = req.params;
   const data = req.body;
+
+  // Validación de datos
+  if (!codigo_pedido || Object.keys(data).length === 0) {
+    return res.status(400).json({ error: 'Código de pedido y datos son requeridos' });
+  }
+
   try {
+    console.log(`Código del pedido recibido: ${codigo_pedido}`);
+    console.log('Datos recibidos del frontend:', data); // Imprime el arreglo de datos que se recibe desde el frontend
+    
+    // Llamada a la función que actualiza el pedido
     const result = await queries.actualizarPedido(codigo_pedido, data);
-    res.json(result.rows[0]);
-  } catch (err) {
-    console.error(err);
-    res.status(500).send('Error al actualizar pedido');
+    
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: 'Pedido no encontrado' });
+    }
+
+    // Enviar la respuesta con el pedido actualizado
+    res.json({ message: 'Pedido actualizado correctamente', pedido: result.rows[0] });
+  } catch (error) {
+    console.error('Error al actualizar el pedido:', error);
+    res.status(500).json({ error: 'Error interno del servidor al actualizar el pedido' });
   }
 });
-
 // Puerto
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {

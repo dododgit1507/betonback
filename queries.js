@@ -198,34 +198,32 @@ const registrarOficina = async ({ especialidad, id_persona }) => {
   );
 };
 
-
-
-
-
-
 // Función para actualizar datos
 
 const actualizarPedido = async (codigo_pedido, data) => {
   const {
-    fecha, hora, nivel, metros_cuadrados, metros_lineales, kilogramos, frisos, chatas,
-    codigo_plano, planta, id_proyecto_cup, id_producto, id_usuario, id_transporte, id_oficina
+    fecha, hora, nivel, m2 = 0, ml = 0, kg = 0, 
+    frisos_ml = 0, chatas_kg = 0, codigo_plano, planta, id_proyecto_cup, 
+    id_producto = null, id_usuario = null, id_transporte = null, id_oficina = null
   } = data;
 
   return await db.query(
     `UPDATE detalle_pedido 
-     SET Fecha = $1, Hora = $2, Nivel = $3, Metros_Cuadrados = $4, Metros_Lineales = $5, 
-         Kilogramos = $6, Frisos = $7, Chatas = $8, Codigo_Plano = $9, Planta = $10,
-         Id_Proyecto_CUP = $11, Id_Producto = $12, Id_Usuario = $13, Id_Transporte = $14, 
-         Id_Oficina = $15
-     WHERE Codigo_Pedido = $16
-     RETURNING *`,
+     SET fecha = $1, hora = $2, nivel = $3, metros_cuadrados = $4, metros_lineales = $5, 
+         kilogramos = $6, frisos = $7, chatas = $8, codigo_plano = $9, planta = $10, 
+         id_proyecto_cup = $11, id_producto = COALESCE($12, id_producto), 
+         id_usuario = COALESCE($13, id_usuario), id_transporte = COALESCE($14, id_transporte), 
+         id_oficina = COALESCE($15, id_oficina)
+     WHERE codigo_pedido = $16
+     RETURNING *`,  // Devolver el pedido actualizado
     [
-      fecha, hora, nivel, metros_cuadrados, metros_lineales, kilogramos, frisos, chatas,
-      codigo_plano, planta, id_proyecto_cup, id_producto, id_usuario, id_transporte,
-      id_oficina, codigo_pedido
+      fecha, hora, nivel, m2, ml, kg, 
+      frisos_ml, chatas_kg, codigo_plano, planta, id_proyecto_cup, id_producto, 
+      id_usuario, id_transporte, id_oficina, codigo_pedido
     ]
   );
 };
+
 
 module.exports = {
   getPedidos,
