@@ -252,6 +252,60 @@ app.post('/registrar_pedido', async (req, res) => {
   }
 });
 
+app.post('/codigo', async (req, res) => {
+  const { codigo, usuarioId } = req.body;
+
+  // Log para ver qué datos están llegando desde el front
+  console.log('Datos recibidos:', { codigo, usuarioId });
+
+  try {
+    // Log para saber si el query está siendo ejecutado
+    console.log('Ejecutando query para insertar código...');
+
+    // Aquí ejecutamos el query para insertar el código en la base de datos
+    const result = await queries.insertarCodigo({ codigo, usuarioId });
+
+    // Log para ver el resultado de la inserción
+    console.log('Resultado del query:', result);
+
+    res.json(result);  // Enviamos el resultado como respuesta
+  } catch (err) {
+    // Log para capturar cualquier error en la inserción
+    console.error('Error al generar el código:', err);
+    res.status(500).send('Error al generar el código');
+  }
+})
+
+app.post('/verificar_codigo', async (req, res) => {
+  const { codigo, usuarioId } = req.body;
+
+  console.log('Datos recibidos:', { codigo, usuarioId });
+
+  try {
+    console.log('Ejecutando query para verificar el código...');
+
+    const result = await queries.verificarCodigo({ codigo, usuarioId });
+
+    if (result && result.rows && result.rows.length > 0) {
+      console.log('Código encontrado:', result.rows[0]);
+
+      // Eliminar el código después de validarlo
+      await queries.eliminarCodigo({ codigo, usuarioId });
+
+      res.json({ success: true, message: 'Código válido y eliminado' });
+    } else {
+      res.status(404).json({ success: false, message: 'Código inválido o no activo' });
+    }
+  } catch (err) {
+    console.error('Error al verificar el código:', err);
+    res.status(500).send('Error al verificar el código');
+  }
+});
+
+
+
+
+
 app.post('/registrar_envio', async (req, res) => {
   const data = req.body;
   try {

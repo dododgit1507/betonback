@@ -181,6 +181,23 @@ const registrarPedido = async (data) => {
   );
 };
 
+const insertarCodigo = async ({ codigo, usuarioId }) => {
+  const query = `
+    INSERT INTO codigos_validacion (codigo, usuario_id)
+    VALUES ($1, $2)
+    RETURNING *;
+  `;
+  
+  const values = [codigo, usuarioId];  // Código generado y ID de usuario
+
+  try {
+    const result = await pool.query(query, values);
+    return result.rows[0];  // Devolvemos el registro insertado
+  } catch (err) {
+    throw err;  // Propagamos el error para que el controlador lo capture
+  }
+};
+
 
 
 const registrarEnvio = async (data) => {
@@ -224,21 +241,44 @@ const actualizarPedido = async (codigo_pedido, data) => {
   );
 };
 
+// queries.js
+async function verificarCodigo({ codigo, usuarioId }) {
+  const query = 'SELECT * FROM codigos_validacion WHERE codigo = $1 AND usuario_id = $2 AND estado = \'activo\'';
+  const values = [codigo, usuarioId];
+
+  try {
+    const result = await pool.query(query, values);
+    return result; // Asegúrate de que result contenga las filas
+  } catch (err) {
+    console.error('Error en la consulta verificarCodigo:', err);
+    throw err;
+  }
+}
+
+async function eliminarCodigo({ codigo, usuarioId }) {
+  const query = 'DELETE FROM codigos_validacion WHERE codigo = $1 AND usuario_id = $2';
+  const values = [codigo, usuarioId];
+  return await pool.query(query, values);
+}
+
 
 module.exports = {
   getPedidos,
   getProyectos,
   getUsuarios,
+  eliminarCodigo,
   getEnvio,
   getTransportes,
   getOficinasTecnicas,
   getProductos,
   registrarCliente,
   registrarProyecto,
+  verificarCodigo,
   getUserByEmail,
   registrarPedido,
   registrarEnvio,
   registrarOficina,
-  actualizarPedido
+  actualizarPedido,
+  insertarCodigo
 };
 
